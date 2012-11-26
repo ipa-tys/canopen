@@ -1,4 +1,4 @@
-#include "canopen2.h"
+#include "canopen.h"
 
 namespace canopen {
 
