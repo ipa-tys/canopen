@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
       	      << "(3) sync rate [msec]" << std::endl
 	      << "(4) target velocity [rad/sec]" << std::endl
       	      << "(5) acceleration [rad/sec^2]" << std::endl
-	      << "(enter acceleration '0' to omit acceleration phase)"
+	      << "(enter acceleration '0' to omit acceleration phase)" << std::endl
 	      << "Example 1: ./move_device /dev/pcan32 12 10 0.2 0.05" << std::endl
       	      << "Example 2 (reverse direction): "
 	      << "./move_device /dev/pcan32 12 10 -0.2 -0.05" << std::endl;
