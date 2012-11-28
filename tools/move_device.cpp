@@ -33,8 +33,8 @@ int main(int argc, char *argv[]) {
 
   // configure CANopen device objects and custom incoming and outgoing PDOs:
   canopen::devices[ CANid ] = canopen::Device(CANid);
-  canopen::incomingPDOHandlers[ 0x180 + 0xC ] = 
-    [](const TPCANRdMsg m) { canopen::schunkDefaultPDO_incoming( 0xC, m ); };
+  canopen::incomingPDOHandlers[ 0x180 + CANid ] = 
+    [CANid](const TPCANRdMsg m) { canopen::schunkDefaultPDO_incoming( CANid, m ); };
   canopen::sendPos = canopen::schunkDefaultPDOOutgoing;
 
   canopen::init(deviceFile, canopen::syncInterval);

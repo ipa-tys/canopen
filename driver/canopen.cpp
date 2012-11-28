@@ -7,6 +7,7 @@ namespace canopen {
   std::chrono::milliseconds syncInterval;
   HANDLE h;
   std::map<uint8_t, Device> devices;
+  std::map<std::string, DeviceGroup> deviceGroups;
 
   std::map<SDOkey, std::function<void (uint8_t CANid, BYTE data[8])> > incomingDataHandlers
   { { statusword, statusword_incoming },
@@ -26,6 +27,27 @@ namespace canopen {
     if (!h) return false;
     errno = CAN_Init(h, CAN_BAUD_500K, CAN_INIT_TYPE_ST);
     return true;
+  }
+
+  void setMotorState(uint16_t CANid, std::string targetState) { // todo: not finished
+    // if (devices[CANid].motorState_ == "fault")
+    while (devices[CANid].motorState_ != targetState) {
+      canopen::sendSDO(CANid, canopen::statusword);
+      if (devices[CANid].motorState_ == "fault") {
+	canopen::sendSDO(CANid, canopen::controlword, canopen::controlword_fault_reset_0);
+	canopen::sendSDO(CANid, canopen::controlword, canopen::controlword_fault_reset_1);
+      }
+      if (devices[CANid].motorState_ == "switch_on_disabled") {
+	canopen::sendSDO(CANid, canopen::controlword, canopen::controlword_shutdown);
+      }
+      if (devices[CANid].motorState_ == "ready_to_switch_on") {
+	canopen::sendSDO(CANid, canopen::controlword, canopen::controlword_switch_on);
+      }
+      if (devices[CANid].motorState_ == "switched_on") {
+	canopen::sendSDO(CANid, canopen::controlword, canopen::controlword_enable_operation);
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
   }
 
   void init(std::string deviceFile, std::chrono::milliseconds syncInterval) {
@@ -60,10 +82,12 @@ namespace canopen {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       canopen::sendNMT(device.second.CANid_, canopen::NMT_start);
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      canopen::sendSDO(device.second.CANid_, canopen::controlword, canopen::controlword_shutdown);
+
+      setMotorState(device.second.CANid_, "operation_enable");
+      /* canopen::sendSDO(device.second.CANid_, canopen::controlword, canopen::controlword_shutdown);
       canopen::sendSDO(device.second.CANid_, canopen::controlword, canopen::controlword_switch_on);
-      canopen::sendSDO(device.second.CANid_, canopen::controlword, canopen::controlword_enable_operation);
-    }
+      canopen::sendSDO(device.second.CANid_, canopen::controlword, canopen::controlword_enable_operation); */
+      }
   }
 
   void defaultListener() {
@@ -120,9 +144,26 @@ namespace canopen {
   }
 
   void statusword_incoming(uint8_t CANid, BYTE data[8]) {
+    /* std::cout << "STATUSWORD: ";
+    for (int i=0; i<8; i++)
+      printf("%02x ", data[i]);
+      std::cout << std::endl; */
+
     uint16_t mydata = data[4] + (data[5] << 8);
     // update variables of the corresponding device object, e.g.
-    devices[CANid].voltage_enabled_ = mydata && 0x10; // BIT 4;
+    // printf("mydata: %04x\n", mydata);
+    if ((mydata & 8) == 8) 
+      devices[CANid].motorState_ = "fault";
+    else if ((mydata & 0x4f) == 0x40) 
+      devices[CANid].motorState_ = "switch_on_disabled";
+    else if ((mydata & 0x6f) == 0x21)
+      devices[CANid].motorState_ = "ready_to_switch_on";
+    else if ((mydata & 0x6f) == 0x23)
+      devices[CANid].motorState_ = "switched_on";
+    else if ((mydata & 0x6f) == 0x27)
+      devices[CANid].motorState_ = "operation_enable";
+
+    devices[CANid].voltage_enabled_ = mydata & 0x10; // BIT 4; todo
   }
 
   void modes_of_operation_display_incoming(uint8_t CANid, BYTE data[8]) {
