@@ -52,6 +52,9 @@ namespace canopen {
 
   void init(std::string deviceFile, std::chrono::milliseconds syncInterval) {
     // canopen::devices must be set up before this function is called
+
+    CAN_Close(h);
+
     syncMsg.ID = 0x80;
     syncMsg.MSGTYPE = 0x00;
     syncMsg.LEN = 0x00;
@@ -61,16 +64,17 @@ namespace canopen {
     nodeguardMsg.MSGTYPE = 0x01; // remote frame
     nodeguardMsg.LEN = 0;
 
-    if (atFirstInit) {
+    // if (atFirstInit) {
     
-      if (!canopen::openConnection(deviceFile)) {
-	std::cout << "Cannot open CAN device; aborting." << std::endl;
-	exit(EXIT_FAILURE);
-      }
-
-      canopen::initListenerThread(canopen::defaultListener);
-      atFirstInit = false;
+    if (!canopen::openConnection(deviceFile)) {
+      std::cout << "Cannot open CAN device; aborting." << std::endl;
+      exit(EXIT_FAILURE);
     }
+
+    if (atFirstInit)
+      canopen::initListenerThread(canopen::defaultListener);
+      // atFirstInit = false;
+    // }
 
     for (auto device : devices) {
       sendSDO(device.second.CANid_, ip_time_units, (uint8_t) syncInterval.count() );
@@ -78,16 +82,21 @@ namespace canopen {
       sendSDO(device.second.CANid_, sync_timeout_factor, sync_timeout_factor_disable_timeout);
 
       // NMT & motor state machine:
-      canopen::sendNMT(device.second.CANid_, canopen::NMT_stop);
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      canopen::sendNMT(device.second.CANid_, canopen::NMT_start);
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      if (atFirstInit) {
+	canopen::sendNMT(device.second.CANid_, canopen::NMT_stop);
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	canopen::sendNMT(device.second.CANid_, canopen::NMT_start);
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
 
       setMotorState(device.second.CANid_, "operation_enable");
       /* canopen::sendSDO(device.second.CANid_, canopen::controlword, canopen::controlword_shutdown);
       canopen::sendSDO(device.second.CANid_, canopen::controlword, canopen::controlword_switch_on);
       canopen::sendSDO(device.second.CANid_, canopen::controlword, canopen::controlword_enable_operation); */
-      }
+    }
+    
+    if (atFirstInit)
+      atFirstInit = false;
   }
 
   void defaultListener() {
