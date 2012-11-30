@@ -48,8 +48,6 @@ namespace canopen {
 
   // ----------------- CAN device representations: --------------
 
-  
-
   class Device {
   public:
     Device() {};
@@ -74,6 +72,7 @@ namespace canopen {
     std::string name_;
     bool initialized;
     bool voltage_enabled_;
+    bool driveReferenced_;
     double actualPos_; // unit = rad
     double desiredPos_; // unit = rad
     double actualVel_; // unit = rad/sec

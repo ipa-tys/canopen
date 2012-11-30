@@ -35,7 +35,9 @@ namespace canopen {
       canopen::sendSDO(CANid, canopen::statusword);
       if (devices[CANid].motorState_ == "fault") {
 	canopen::sendSDO(CANid, canopen::controlword, canopen::controlword_fault_reset_0);
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
 	canopen::sendSDO(CANid, canopen::controlword, canopen::controlword_fault_reset_1);
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
       }
       if (devices[CANid].motorState_ == "switch_on_disabled") {
 	canopen::sendSDO(CANid, canopen::controlword, canopen::controlword_shutdown);
@@ -153,8 +155,8 @@ namespace canopen {
   }
 
   void statusword_incoming(uint8_t CANid, BYTE data[8]) {
-    /* std::cout << "STATUSWORD: ";
-    for (int i=0; i<8; i++)
+
+    /* for (int i=0; i<8; i++)
       printf("%02x ", data[i]);
       std::cout << std::endl; */
 
@@ -172,7 +174,11 @@ namespace canopen {
     else if ((mydata & 0x6f) == 0x27)
       devices[CANid].motorState_ = "operation_enable";
 
-    devices[CANid].voltage_enabled_ = mydata & 0x10; // BIT 4; todo
+    devices[CANid].voltage_enabled_ = (mydata >> 4) & 0x1;
+    devices[CANid].driveReferenced_ = (mydata >> 15) & 0x1;
+    
+    std::cout << "STATUSWORD incoming; drive referenced? " << 
+      devices[CANid].driveReferenced_ << std::endl;
   }
 
   void modes_of_operation_display_incoming(uint8_t CANid, BYTE data[8]) {
